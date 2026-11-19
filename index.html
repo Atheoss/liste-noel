@@ -46,6 +46,8 @@
   .card.done{opacity:.55}
   .card.done .photo::after{content:"🎁 Réservé";position:absolute;inset:auto 12px 12px auto;background:var(--green);color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px}
   footer{margin-top:36px;color:var(--muted);font-size:13px;text-align:center}
+  .sync{margin-top:10px;font-weight:600}
+  .sync[data-ok=true]{color:var(--green)}
   .snow{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
   .snow span{position:absolute;top:-10px;color:#b9cbc1;animation:fall linear infinite}
   @keyframes fall{to{transform:translateY(110vh) rotate(180deg)}}
@@ -70,7 +72,10 @@
     <button data-f="done" aria-pressed="false">Réservés</button>
   </div>
   <div class="grid" id="grid"></div>
-  <footer>Clique sur « Voir l'article » pour ouvrir la page du produit. La case « Réservé » est mémorisée sur cet appareil.</footer>
+  <footer>
+    Clique sur « Voir l'article » pour ouvrir la page du produit. Coche « Réservé » quand tu prends un cadeau : tout le monde le verra, pour éviter les doublons.
+    <div class="sync" id="sync" data-ok="false">○ Connexion en cours…</div>
+  </footer>
 </div>
 
 <script>
@@ -106,12 +111,63 @@ const GIFTS = [
     img:"img/short.jpg" },
 ];
 
+// Base partagée (Firebase Realtime Database) : les réservations sont visibles par tout le monde.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBuq27WbsAdBCXOz-nKv5glFcy5NezuNVI",
+  authDomain: "liste-noel-c33ae.firebaseapp.com",
+  databaseURL: "https://liste-noel-c33ae-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "liste-noel-c33ae",
+  appId: "1:539678859123:web:06618a66532556aca1ef06",
+};
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/12.6.0";
+
+// Copie locale : affiche tout de suite le dernier état connu, sert de secours si Firebase est injoignable.
 const KEY = "liste-noel-reserves";
 let reserved = {};
 try { reserved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch(e) {}
 let filter = "all";
+let remote = null; // { ref, set, remove, db } une fois Firebase chargé
 
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(reserved)); } catch(e) {} }
+function cache(){ try { localStorage.setItem(KEY, JSON.stringify(reserved)); } catch(e) {} }
+function setStatus(text, ok){
+  const s = document.getElementById("sync");
+  s.textContent = text;
+  s.dataset.ok = ok;
+}
+
+async function toggle(id, on){
+  if (on) reserved[id] = true; else delete reserved[id];
+  cache(); render();
+  if (!remote) return;
+  try {
+    const r = remote.ref(remote.db, "reserves/" + id);
+    await (on ? remote.set(r, true) : remote.remove(r));
+  } catch(e) {
+    setStatus("⚠️ La réservation n'a pas pu être enregistrée, réessaie.", false);
+  }
+}
+
+async function connect(){
+  try {
+    const [{ initializeApp }, { getDatabase, ref, onValue, set, remove }] = await Promise.all([
+      import(`${FIREBASE_SDK}/firebase-app.js`),
+      import(`${FIREBASE_SDK}/firebase-database.js`),
+    ]);
+    const db = getDatabase(initializeApp(FIREBASE_CONFIG));
+    remote = { db, ref, set, remove };
+    onValue(ref(db, "reserves"), snap => {
+      reserved = snap.val() || {};
+      cache(); render();
+    }, () => setStatus("⚠️ Impossible de lire les réservations partagées.", false));
+    onValue(ref(db, ".info/connected"), snap => {
+      if (snap.val()) setStatus("● Réservations partagées en direct", true);
+      else setStatus("○ Connexion en cours…", false);
+    });
+  } catch(e) {
+    setStatus("⚠️ Hors ligne : les réservations ne sont pas partagées pour le moment.", false);
+  }
+}
+
 const fmt = p => p == null ? "Prix sur la page" : p.toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
 
 function render(){
@@ -135,10 +191,7 @@ function render(){
           <label class="check"><input type="checkbox" ${done?"checked":""}> Réservé</label>
         </div>
       </div>`;
-    el.querySelector("input").addEventListener("change", e => {
-      if (e.target.checked) reserved[g.id] = true; else delete reserved[g.id];
-      save(); render();
-    });
+    el.querySelector("input").addEventListener("change", e => toggle(g.id, e.target.checked));
     grid.appendChild(el);
   });
   const n = GIFTS.filter(g => reserved[g.id]).length;
@@ -165,6 +218,7 @@ for (let i=0;i<28;i++){
   snow.appendChild(s);
 }
 render();
+connect();
 </script>
 </body>
 </html>
