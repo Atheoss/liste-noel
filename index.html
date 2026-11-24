@@ -92,6 +92,18 @@ const CABLE_SVG = `<svg viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg"
   <text x="120" y="98" text-anchor="middle" font-family="Inter,sans-serif" font-weight="700" font-size="18" fill="#c9962b">5 m</text>
 </svg>`;
 
+const LOCK_SVG = `<svg viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg" aria-label="Antivol à câble à code">
+  <defs><linearGradient id="lk" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3f464c"/><stop offset="1" stop-color="#1f2326"/></linearGradient></defs>
+  <path d="M96 80 C70 6 170 6 144 80" fill="none" stroke="#8f979d" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="144" cy="80" r="7" fill="#c9962b"/>
+  <rect x="68" y="72" width="104" height="84" rx="18" fill="url(#lk)"/>
+  <g font-family="Inter,sans-serif" font-weight="700" font-size="17" text-anchor="middle" fill="#1f2a24">
+    <rect x="83" y="99" width="22" height="30" rx="5" fill="#ece6da"/><text x="94" y="120">0</text>
+    <rect x="109" y="99" width="22" height="30" rx="5" fill="#ece6da"/><text x="120" y="120">0</text>
+    <rect x="135" y="99" width="22" height="30" rx="5" fill="#ece6da"/><text x="146" y="120">0</text>
+  </g>
+</svg>`;
+
 // ➜ Pour ajouter un cadeau : copie un bloc { ... } et remplis les champs.
 const GIFTS = [
   { id:"manette", tag:"🎮 Gaming", name:"Manette DualSense PS5",
@@ -109,6 +121,16 @@ const GIFTS = [
     note:"Short noir logo ASSM Volley, taille élastiquée avec cordon, 2 poches. Commande avant le 29/11, distribution le 18/12.",
     url:"https://assm-volley.sumupstore.com/product/short-performance-adulte",
     img:"img/short.jpg" },
+  { id:"antivol", tag:"🔒 Antivol", name:"Antivol à code ABUS Combiflex 2501",
+    shop:"Amazon", price:null,
+    note:"Petit antivol à câble avec code personnalisable. Câble de 65 cm, ultra léger (54 g).",
+    url:"https://www.amazon.fr/ABUS-Antivol-sp%C3%A9cial-Combiflex-2501/dp/B01N4667FL/ref=sr_1_6?sr=8-6",
+    svg:LOCK_SVG },
+  { id:"clipstic", tag:"⛷️ Ski", name:"Clipstic Plus (beige)",
+    shop:"Clipstic", price:29,
+    note:"Sangle qui attache les skis et les bâtons ensemble pour les porter d'une main. Se met en quelques secondes et tient dans la poche. Sur la page : choisir « 1 Pack » et le coloris beige.",
+    url:"https://www.clipstic.com/products/clipstic-plus",
+    img:"img/clipstic.jpg", bg:"#e1e1e1" },
 ];
 
 // Base partagée (Firebase Realtime Database) : les réservations sont visibles par tout le monde.
@@ -178,7 +200,7 @@ function render(){
     const el = document.createElement("article");
     el.className = "card" + (done ? " done" : "");
     el.innerHTML = `
-      <div class="photo">
+      <div class="photo"${g.bg ? ` style="background:${g.bg}"` : ""}>
         <span class="tag">${g.tag}</span>
         ${g.img ? `<img src="${g.img}" alt="${g.name}">` : g.svg}
       </div>
